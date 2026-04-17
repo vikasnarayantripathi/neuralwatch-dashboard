@@ -2,18 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   NeuralWatch — Global Styles (Premium White Theme)
-   ============================================================ */
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   height: 100%;
 }
 
@@ -21,7 +16,6 @@ body {
   background-color: #F5F7FA;
   color: #0D1B2A;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -31,20 +25,17 @@ body {
   min-height: 100vh;
 }
 
-/* Better default typography */
 h1, h2, h3, h4, h5, h6 {
   color: #0D1B2A;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-/* Links */
 a {
   color: inherit;
   text-decoration: none;
 }
 
-/* Buttons — remove default styles */
 button {
   font-family: inherit;
   cursor: pointer;
@@ -52,23 +43,15 @@ button {
   background: none;
 }
 
-/* Inputs — consistent base */
-input,
-textarea,
-select {
+input, textarea, select {
   font-family: inherit;
   font-size: inherit;
 }
 
-input:focus,
-textarea:focus,
-select:focus {
+input:focus, textarea:focus, select:focus {
   outline: none;
 }
 
-/* ============================================================
-   Custom scrollbar — subtle, matches white theme
-   ============================================================ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -87,10 +70,6 @@ select:focus {
   background: #0057FF;
 }
 
-/* ============================================================
-   Utility: status dot pulse
-   (used on camera cards for "live" indicator)
-   ============================================================ */
 .status-dot {
   display: inline-block;
   width: 8px;
@@ -113,17 +92,11 @@ select:focus {
   background-color: #F59E0B;
 }
 
-/* ============================================================
-   Text selection
-   ============================================================ */
 ::selection {
   background-color: #E6EEFF;
   color: #0057FF;
 }
 
-/* ============================================================
-   Loading spinner (reusable)
-   ============================================================ */
 .nw-spinner {
   width: 20px;
   height: 20px;
