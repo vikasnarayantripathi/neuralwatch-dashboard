@@ -66,3 +66,20 @@ export const getRelays = () =>
   api.get('/api/relay')
 
 export default api
+export const startStream = (cameraId) =>
+  api.post(`/api/stream/${cameraId}/start`)
+
+export const stopStream = (cameraId) =>
+  api.post(`/api/stream/${cameraId}/stop`)
+
+export const getActiveStreams = () =>
+  api.get('/api/stream/active')
+
+export const getSegments = (cameraId, date) =>
+  api.get(`/api/playback/${cameraId}/segments${date ? `?date=${date}` : ''}`)
+
+export const getPlaylist = (cameraId, date) =>
+  api.get(`/api/playback/${cameraId}/playlist${date ? `?date=${date}` : ''}`)
+
+export const getRecordingDates = (cameraId) =>
+  api.get(`/api/playback/${cameraId}/dates`)
