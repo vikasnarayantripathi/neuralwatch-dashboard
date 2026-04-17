@@ -9,24 +9,52 @@ import Layout from './components/Layout'
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('nw_token')
-  return token ? children : <Navigate to="/login" />
+  return token ? children : <Navigate to="/login" replace />
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/" element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }>
-          <Route index element={<Dashboard />} />
-          <Route path="cameras" element={<Cameras />} />
-          <Route path="alerts" element={<Alerts />} />
-        </Route>
+
+        {/* Protected routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/cameras"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Cameras />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/alerts"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Alerts />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />}  />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   )
