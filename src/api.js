@@ -4,9 +4,7 @@ const API_BASE = 'https://neuralwatch-api.onrender.com'
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  headers: { 'Content-Type': 'application/json' }
 })
 
 api.interceptors.request.use((config) => {
@@ -29,6 +27,7 @@ api.interceptors.response.use(
   }
 )
 
+// Auth
 export const login = (email, password) =>
   api.post('/api/auth/login', { email, password })
 
@@ -38,11 +37,16 @@ export const register = (name, email, password) =>
 export const getMe = () =>
   api.get('/api/auth/me')
 
+// Cameras — use rtsp_url to match backend
 export const getCameras = () =>
   api.get('/api/cameras')
 
 export const addCamera = (data) =>
-  api.post('/api/cameras', data)
+  api.post('/api/cameras', {
+    name: data.name,
+    rtsp_url: data.stream_url || data.rtsp_url,
+    brand: data.brand || 'generic'
+  })
 
 export const deleteCamera = (id) =>
   api.delete(`/api/cameras/${id}`)
@@ -50,9 +54,7 @@ export const deleteCamera = (id) =>
 export const getCameraHealth = (id) =>
   api.get(`/api/cameras/${id}/health`)
 
-export const getMotionEvents = (cameraId) =>
-  api.get(`/api/cameras/${cameraId}/motion`)
-
+// Alerts
 export const getAlerts = () =>
   api.get('/api/alerts')
 
@@ -62,10 +64,11 @@ export const dismissAlert = (id) =>
 export const confirmAlert = (id) =>
   api.post(`/api/alerts/${id}/confirm`)
 
+// Relay
 export const getRelays = () =>
   api.get('/api/relay')
 
-export default api
+// Stream control
 export const startStream = (cameraId) =>
   api.post(`/api/stream/${cameraId}/start`)
 
@@ -75,6 +78,7 @@ export const stopStream = (cameraId) =>
 export const getActiveStreams = () =>
   api.get('/api/stream/active')
 
+// Playback
 export const getSegments = (cameraId, date) =>
   api.get(`/api/playback/${cameraId}/segments${date ? `?date=${date}` : ''}`)
 
@@ -83,3 +87,5 @@ export const getPlaylist = (cameraId, date) =>
 
 export const getRecordingDates = (cameraId) =>
   api.get(`/api/playback/${cameraId}/dates`)
+
+export default api
