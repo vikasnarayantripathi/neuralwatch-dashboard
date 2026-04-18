@@ -19,9 +19,13 @@ export default function Login() {
     setError('')
     try {
       const res = await login(form.email, form.password)
-      const { token, tenant } = res.data
-      localStorage.setItem('nw_token', token)
-      localStorage.setItem('nw_tenant', JSON.stringify(tenant))
+      const { access_token, tenant_id } = res.data
+      localStorage.setItem('nw_token', access_token)
+      localStorage.setItem('nw_tenant', JSON.stringify({
+        id: tenant_id,
+        name: form.email.split('@')[0],
+        plan: 'starter'
+      }))
       navigate('/dashboard')
     } catch (e) {
       setError(e.response?.data?.detail || 'Invalid email or password')
