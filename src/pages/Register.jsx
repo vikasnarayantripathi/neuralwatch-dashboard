@@ -23,9 +23,13 @@ export default function Register() {
     setError('')
     try {
       const res = await register(form.name, form.email, form.password)
-      const { token, tenant } = res.data
-      localStorage.setItem('nw_token', token)
-      localStorage.setItem('nw_tenant', JSON.stringify(tenant))
+      const { access_token, tenant_id } = res.data
+      localStorage.setItem('nw_token', access_token)
+      localStorage.setItem('nw_tenant', JSON.stringify({
+        id: tenant_id,
+        name: form.name,
+        plan: 'starter'
+      }))
       navigate('/dashboard')
     } catch (e) {
       setError(e.response?.data?.detail || 'Registration failed. Please try again.')
