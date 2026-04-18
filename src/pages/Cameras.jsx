@@ -9,7 +9,7 @@ import {
 import {
   getCameras, addCamera, deleteCamera,
   startStream, stopStream, getActiveStreams,
-  getPlaylist, getRecordingDates, getSegments
+  getPlaylist, getRecordingDates
 } from '../api'
 
 // ── HLS Video Player ───────────────────────────────────────
@@ -23,12 +23,8 @@ function VideoPlayer({ src, autoPlay = true }) {
     if (!src || !videoRef.current) return
     setError('')
     setLoading(true)
-
     if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-      })
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: true })
       hlsRef.current = hls
       hls.loadSource(src)
       hls.attachMedia(videoRef.current)
@@ -43,7 +39,6 @@ function VideoPlayer({ src, autoPlay = true }) {
         }
       })
     } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       videoRef.current.src = src
       videoRef.current.addEventListener('loadedmetadata', () => {
         setLoading(false)
@@ -53,10 +48,7 @@ function VideoPlayer({ src, autoPlay = true }) {
       setError('HLS not supported on this browser.')
       setLoading(false)
     }
-
-    return () => {
-      hlsRef.current?.destroy()
-    }
+    return () => { hlsRef.current?.destroy() }
   }, [src])
 
   if (error) return (
@@ -80,15 +72,13 @@ function VideoPlayer({ src, autoPlay = true }) {
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
-        controls
-        playsInline
-        muted
+        controls playsInline muted
       />
     </div>
   )
 }
 
-// ── Camera Viewer (Live + Playback) ────────────────────────
+// ── Camera Viewer ──────────────────────────────────────────
 function CameraViewer({ camera }) {
   const [tab, setTab] = useState('live')
   const [dates, setDates] = useState([])
@@ -96,8 +86,7 @@ function CameraViewer({ camera }) {
   const [playlistUrl, setPlaylistUrl] = useState('')
   const [loadingDates, setLoadingDates] = useState(false)
 
-  const livePlaylistUrl =
-    `https://neuralwatch-api.onrender.com/api/playback/${camera.id}/playlist`
+  const liveUrl = `https://neuralwatch-api.onrender.com/api/playback/${camera.id}/playlist`
 
   useEffect(() => {
     if (tab === 'playback') fetchDates()
@@ -114,7 +103,7 @@ function CameraViewer({ camera }) {
         fetchPlaylist(d[0])
       }
     } catch (e) {
-      console.error('Failed to fetch dates:', e)
+      console.error(e)
     } finally {
       setLoadingDates(false)
     }
@@ -124,63 +113,45 @@ function CameraViewer({ camera }) {
     try {
       const res = await getPlaylist(camera.id, date)
       const blob = new Blob([res.data], { type: 'application/vnd.apple.mpegurl' })
-      const url = URL.createObjectURL(blob)
-      setPlaylistUrl(url)
-    } catch (e) {
+      setPlaylistUrl(URL.createObjectURL(blob))
+    } catch {
       setPlaylistUrl('')
     }
-  }
-
-  const handleDateChange = (date) => {
-    setSelectedDate(date)
-    fetchPlaylist(date)
   }
 
   return (
     <div className="mt-3 space-y-3">
       {/* Tabs */}
       <div className="flex gap-2 p-1 rounded-lg" style={{ backgroundColor: '#F5F7FA' }}>
-        <button
-          onClick={() => setTab('live')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all"
-          style={{
-            backgroundColor: tab === 'live' ? '#FFFFFF' : 'transparent',
-            color: tab === 'live' ? '#0D1B2A' : '#8B94A6',
-            boxShadow: tab === 'live' ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
-          }}
-        >
-          <Radio className="w-3 h-3" style={{ color: tab === 'live' ? '#EF4444' : '#8B94A6' }} />
-          Live
-        </button>
-        <button
-          onClick={() => setTab('playback')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all"
-          style={{
-            backgroundColor: tab === 'playback' ? '#FFFFFF' : 'transparent',
-            color: tab === 'playback' ? '#0D1B2A' : '#8B94A6',
-            boxShadow: tab === 'playback' ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
-          }}
-        >
-          <Calendar className="w-3 h-3" />
-          Playback
-        </button>
+        {[
+          { key: 'live', icon: Radio, label: 'Live', color: '#EF4444' },
+          { key: 'playback', icon: Calendar, label: 'Playback', color: '#0057FF' }
+        ].map(({ key, icon: Icon, label, color }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all"
+            style={{
+              backgroundColor: tab === key ? '#FFFFFF' : 'transparent',
+              color: tab === key ? '#0D1B2A' : '#8B94A6',
+              boxShadow: tab === key ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
+            }}>
+            <Icon className="w-3 h-3" style={{ color: tab === key ? color : '#8B94A6' }} />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Live tab */}
+      {/* Live */}
       {tab === 'live' && (
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <div className="w-2 h-2 rounded-full animate-pulse-dot"
-              style={{ backgroundColor: '#EF4444' }} />
-            <span className="text-xs font-semibold" style={{ color: '#EF4444' }}>
-              LIVE
-            </span>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444', animation: 'pulseDot 1.5s ease-in-out infinite' }} />
+            <span className="text-xs font-bold" style={{ color: '#EF4444' }}>LIVE</span>
           </div>
-          <VideoPlayer src={livePlaylistUrl} autoPlay={true} />
+          <VideoPlayer src={liveUrl} autoPlay={true} />
         </div>
       )}
 
-      {/* Playback tab */}
+      {/* Playback */}
       {tab === 'playback' && (
         <div className="space-y-3">
           {loadingDates ? (
@@ -188,8 +159,7 @@ function CameraViewer({ camera }) {
               <div className="nw-spinner" />
             </div>
           ) : dates.length === 0 ? (
-            <div className="text-center py-8 rounded-xl"
-              style={{ backgroundColor: '#F5F7FA' }}>
+            <div className="text-center py-8 rounded-xl" style={{ backgroundColor: '#F5F7FA' }}>
               <Calendar className="w-8 h-8 mx-auto mb-2" style={{ color: '#D1D8E2' }} />
               <p className="text-xs" style={{ color: '#8B94A6' }}>
                 No recordings yet. Start recording to build your archive.
@@ -197,39 +167,17 @@ function CameraViewer({ camera }) {
             </div>
           ) : (
             <>
-              {/* Date picker */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5"
-                  style={{ color: '#5A6478' }}>
-                  Select date
-                </label>
-                <select
-                  value={selectedDate}
-                  onChange={e => handleDateChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{
-                    border: '1px solid #E5E9F0',
-                    backgroundColor: '#F5F7FA',
-                    color: '#0D1B2A'
-                  }}
-                >
-                  {dates.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Video player */}
+              <select value={selectedDate}
+                onChange={e => { setSelectedDate(e.target.value); fetchPlaylist(e.target.value) }}
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{ border: '1px solid #E5E9F0', backgroundColor: '#F5F7FA', color: '#0D1B2A' }}>
+                {dates.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
               {playlistUrl
                 ? <VideoPlayer src={playlistUrl} autoPlay={false} />
-                : (
-                  <div className="text-center py-8 rounded-xl"
-                    style={{ backgroundColor: '#F5F7FA' }}>
-                    <p className="text-xs" style={{ color: '#8B94A6' }}>
-                      No recordings found for {selectedDate}
-                    </p>
+                : <div className="text-center py-6 text-xs" style={{ color: '#8B94A6' }}>
+                    No recordings for {selectedDate}
                   </div>
-                )
               }
             </>
           )}
@@ -242,24 +190,58 @@ function CameraViewer({ camera }) {
 // ── QR Scanner ─────────────────────────────────────────────
 function QRScanner({ onResult }) {
   const videoRef = useRef(null)
+  const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const animRef = useRef(null)
   const [error, setError] = useState('')
+  const [torch, setTorch] = useState(false)
+  const [hint, setHint] = useState('Initializing camera...')
 
   useEffect(() => {
     startCamera()
-    return () => stopCamera()
+    return () => {
+      stopCamera()
+      if (animRef.current) cancelAnimationFrame(animRef.current)
+    }
   }, [])
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          advanced: [{ focusMode: 'continuous' }]
+        }
       })
       streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
-      scanLoop()
-    } catch (e) {
-      setError('Camera access denied. Please allow camera permission.')
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.setAttribute('playsinline', true)
+        videoRef.current.play()
+        videoRef.current.onloadedmetadata = () => {
+          setHint('Point at QR code — hold steady')
+          tick()
+        }
+      }
+    } catch {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        })
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play()
+          videoRef.current.onloadedmetadata = () => {
+            setHint('Point at QR code — hold steady')
+            tick()
+          }
+        }
+      } catch {
+        setError('Camera access denied. Please allow camera permission and try again.')
+      }
     }
   }
 
@@ -267,33 +249,45 @@ function QRScanner({ onResult }) {
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
-  const scanLoop = () => {
-    if (!videoRef.current) return
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track) return
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torch }] })
+      setTorch(t => !t)
+    } catch {}
+  }
+
+  const tick = () => {
     const video = videoRef.current
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      if ('BarcodeDetector' in window) {
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
-        detector.detect(canvas).then(codes => {
-          if (codes.length > 0) {
-            stopCamera()
-            onResult(codes[0].rawValue)
-          } else setTimeout(scanLoop, 500)
-        }).catch(() => setTimeout(scanLoop, 500))
-      } else {
-        setError('QR scanning not supported. Use Chrome or Edge.')
+    const canvas = canvasRef.current
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      animRef.current = requestAnimationFrame(tick)
+      return
+    }
+    canvas.height = video.videoHeight
+    canvas.width = video.videoWidth
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    if (window.jsQR) {
+      const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert'
+      })
+      if (code) {
+        stopCamera()
+        cancelAnimationFrame(animRef.current)
+        onResult(code.data)
+        return
       }
-    } else setTimeout(scanLoop, 300)
+    }
+    animRef.current = requestAnimationFrame(tick)
   }
 
   return (
     <div className="space-y-3">
       {error ? (
-        <div className="px-4 py-3 rounded-lg text-sm text-center"
+        <div className="px-4 py-3 rounded-xl text-sm text-center"
           style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
           {error}
         </div>
@@ -302,24 +296,40 @@ function QRScanner({ onResult }) {
           <div className="relative rounded-xl overflow-hidden"
             style={{ backgroundColor: '#0D1B2A', aspectRatio: '4/3' }}>
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            <canvas ref={canvasRef} className="hidden" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-48 h-48 border-2 border-white/30 rounded-xl relative">
-                {[['top-0 left-0', 'border-t-4 border-l-4 rounded-tl-lg'],
-                  ['top-0 right-0', 'border-t-4 border-r-4 rounded-tr-lg'],
-                  ['bottom-0 left-0', 'border-b-4 border-l-4 rounded-bl-lg'],
-                  ['bottom-0 right-0', 'border-b-4 border-r-4 rounded-br-lg']
-                ].map(([pos, cls], i) => (
-                  <div key={i} className={`absolute ${pos} w-6 h-6 ${cls}`}
+              <div className="relative w-52 h-52">
+                <div className="absolute left-2 right-2 h-0.5 opacity-80"
+                  style={{ backgroundColor: '#0057FF', top: '50%', animation: 'scanLine 2s ease-in-out infinite' }} />
+                {[
+                  'top-0 left-0 border-t-4 border-l-4 rounded-tl-lg',
+                  'top-0 right-0 border-t-4 border-r-4 rounded-tr-lg',
+                  'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-lg',
+                  'bottom-0 right-0 border-b-4 border-r-4 rounded-br-lg'
+                ].map((cls, i) => (
+                  <div key={i} className={`absolute w-7 h-7 ${cls}`}
                     style={{ borderColor: '#0057FF' }} />
                 ))}
               </div>
             </div>
+            <button onClick={toggleTorch}
+              className="absolute top-3 right-3 w-9 h-9 rounded-lg flex items-center justify-center text-base"
+              style={{ backgroundColor: torch ? '#0057FF' : 'rgba(0,0,0,0.5)' }}>
+              💡
+            </button>
           </div>
-          <p className="text-xs text-center" style={{ color: '#8B94A6' }}>
-            Point camera at the QR code on your IP camera
-          </p>
+          <p className="text-xs text-center font-medium" style={{ color: '#8B94A6' }}>{hint}</p>
+          <div className="px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
+            💡 Tips: Good lighting helps. Hold phone 15-20cm from QR code. Tap 💡 for flashlight.
+          </div>
         </>
       )}
+      <style>{`
+        @keyframes scanLine {
+          0%, 100% { top: 10%; opacity: 0.3; }
+          50% { top: 90%; opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
@@ -361,12 +371,11 @@ function AddCameraModal({ onClose, onAdded }) {
       style={{ backgroundColor: 'rgba(13,27,42,0.5)' }}>
       <div className="w-full max-w-md rounded-2xl p-6 animate-slide-up max-h-screen overflow-y-auto"
         style={{ backgroundColor: '#FFFFFF', boxShadow: '0 25px 50px rgba(13,27,42,0.15)' }}>
+
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-lg font-bold" style={{ color: '#0D1B2A' }}>Add Camera</h2>
-            <p className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>
-              Connect an IP camera or RTSP stream
-            </p>
+            <p className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>Connect an IP camera or RTSP stream</p>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100">
@@ -396,7 +405,7 @@ function AddCameraModal({ onClose, onAdded }) {
 
         {tab === 'manual' && (
           <div className="space-y-3">
-            {form.stream_url && form.stream_url.length > 0 && (
+            {form.stream_url && (
               <div className="px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2"
                 style={{ backgroundColor: '#D1FAE5', color: '#059669' }}>
                 <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
@@ -465,7 +474,7 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
     try {
       await deleteCamera(camera.id)
       onDelete(camera.id)
-    } catch (e) {
+    } catch {
       alert('Failed to delete camera')
       setDeleting(false)
     }
@@ -492,18 +501,14 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
         border: `1px solid ${isStreaming ? '#D1FAE5' : '#F0F3F8'}`
       }}>
 
-      {/* Top row */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: isStreaming ? '#D1FAE5' : '#F5F7FA' }}>
-            <Camera className="w-5 h-5"
-              style={{ color: isStreaming ? '#10B981' : '#8B94A6' }} />
+            <Camera className="w-5 h-5" style={{ color: isStreaming ? '#10B981' : '#8B94A6' }} />
           </div>
           <div>
-            <div className="font-bold text-sm" style={{ color: '#0D1B2A' }}>
-              {camera.name}
-            </div>
+            <div className="font-bold text-sm" style={{ color: '#0D1B2A' }}>{camera.name}</div>
             <div className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>
               {camera.location || 'No location set'}
             </div>
@@ -520,23 +525,18 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
         </span>
       </div>
 
-      {/* Stream URL */}
       <div className="px-3 py-2 rounded-lg mb-3 font-mono text-xs truncate"
         style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
         {camera.stream_url || camera.rtsp_url || 'No stream URL'}
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-2 mb-2">
-        <button
-          onClick={handleStreamToggle}
-          disabled={streamLoading}
+        <button onClick={handleStreamToggle} disabled={streamLoading}
           className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all"
           style={{
             backgroundColor: isStreaming ? '#FEE2E2' : '#0057FF',
             color: isStreaming ? '#DC2626' : '#FFFFFF'
-          }}
-        >
+          }}>
           {streamLoading ? (
             <div className="nw-spinner !w-3.5 !h-3.5" />
           ) : isStreaming ? (
@@ -546,20 +546,19 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
           )}
         </button>
 
-        {/* View button */}
-        <button
-          onClick={() => setShowViewer(v => !v)}
+        <button onClick={() => setShowViewer(v => !v)}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
           style={{
             backgroundColor: showViewer ? '#E6EEFF' : '#F5F7FA',
             color: showViewer ? '#0057FF' : '#5A6478'
-          }}
-        >
+          }}>
           <Video className="w-3.5 h-3.5" />
-          {showViewer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showViewer
+            ? <ChevronUp className="w-3 h-3" />
+            : <ChevronDown className="w-3 h-3" />
+          }
         </button>
 
-        {/* Delete */}
         <button onClick={handleDelete} disabled={deleting}
           className="w-9 h-9 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: '#F5F7FA', color: '#8B94A6' }}>
@@ -567,7 +566,6 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
         </button>
       </div>
 
-      {/* Inline viewer */}
       {showViewer && <CameraViewer camera={camera} />}
     </div>
   )
@@ -592,7 +590,7 @@ export default function Cameras() {
       if (streamRes.status === 'fulfilled')
         setActiveStreams(streamRes.value?.data?.camera_ids || [])
     } catch (e) {
-      console.error('Failed to fetch:', e)
+      console.error(e)
     } finally {
       setLoading(false)
     }
@@ -661,9 +659,7 @@ export default function Cameras() {
             style={{ backgroundColor: '#E6EEFF' }}>
             <Camera className="w-7 h-7" style={{ color: '#0057FF' }} />
           </div>
-          <h3 className="font-bold text-base mb-1" style={{ color: '#0D1B2A' }}>
-            No cameras yet
-          </h3>
+          <h3 className="font-bold text-base mb-1" style={{ color: '#0D1B2A' }}>No cameras yet</h3>
           <p className="text-sm mb-5" style={{ color: '#8B94A6' }}>
             Add your first IP camera or RTSP stream to start recording
           </p>
