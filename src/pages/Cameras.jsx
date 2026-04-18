@@ -69,11 +69,7 @@ function VideoPlayer({ src, autoPlay = true }) {
           <div className="nw-spinner !border-white/20 !border-t-white" />
         </div>
       )}
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover"
-        controls playsInline muted
-      />
+      <video ref={videoRef} className="w-full h-full object-cover" controls playsInline muted />
     </div>
   )
 }
@@ -196,6 +192,18 @@ function QRScanner({ onResult }) {
   const [torch, setTorch] = useState(false)
   const [hint, setHint] = useState('Initializing camera...')
   const [mode, setMode] = useState('camera')
+  const [jsqrReady, setJsqrReady] = useState(false)
+
+  // Wait for jsQR to load
+  useEffect(() => {
+    const check = setInterval(() => {
+      if (window.jsQR) {
+        setJsqrReady(true)
+        clearInterval(check)
+      }
+    }, 200)
+    return () => clearInterval(check)
+  }, [])
 
   useEffect(() => {
     if (mode === 'camera') startCamera()
@@ -217,7 +225,7 @@ function QRScanner({ onResult }) {
       })
       streamRef.current = stream
       const track = stream.getVideoTracks()[0]
-      const capabilities = track.getCapabilities()
+      const capabilities = track.getCapabilities?.() || {}
       if (capabilities.zoom) {
         const min = capabilities.zoom.min
         const max = capabilities.zoom.max
@@ -227,11 +235,13 @@ function QRScanner({ onResult }) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.setAttribute('playsinline', true)
-        videoRef.current.play()
+        await videoRef.current.play()
         videoRef.current.onloadedmetadata = () => {
           setHint('Hold QR code 15-20cm away — tap to focus')
           tick()
         }
+        // Also start tick after short delay as fallback
+        setTimeout(() => tick(), 1000)
       }
     } catch {
       try {
@@ -241,11 +251,9 @@ function QRScanner({ onResult }) {
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          videoRef.current.play()
-          videoRef.current.onloadedmetadata = () => {
-            setHint('Hold QR code 15-20cm away — tap to focus')
-            tick()
-          }
+          await videoRef.current.play()
+          setHint('Hold QR code 15-20cm away — tap to focus')
+          setTimeout(() => tick(), 1000)
         }
       } catch {
         setError('Camera access denied. Use Upload Image mode instead.')
@@ -255,6 +263,7 @@ function QRScanner({ onResult }) {
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop())
+    if (animRef.current) cancelAnimationFrame(animRef.current)
   }
 
   const toggleTorch = async () => {
@@ -272,7 +281,9 @@ function QRScanner({ onResult }) {
     try {
       await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: 0.3 }] })
       setTimeout(async () => {
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+        try {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+        } catch {}
       }, 1000)
     } catch {}
   }
@@ -280,22 +291,46 @@ function QRScanner({ onResult }) {
   const tick = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!video || !canvas) {
       animRef.current = requestAnimationFrame(tick)
       return
     }
-    canvas.height = video.videoHeight
-    canvas.width = video.videoWidth
+    if (video.readyState < 2) {
+      animRef.current = requestAnimationFrame(tick)
+      return
+    }
+    const w = video.videoWidth
+    const h = video.videoHeight
+    if (!w || !h) {
+      animRef.current = requestAnimationFrame(tick)
+      return
+    }
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(video, 0, 0, w, h)
+    const imageData = ctx.getImageData(0, 0, w, h)
+
     if (window.jsQR) {
-      const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'attemptBoth'
-      })
+      // Try normal scan
+      let code = window.jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' })
+
+      // If not found, try with contrast enhancement
+      if (!code) {
+        const enhanced = ctx.getImageData(0, 0, w, h)
+        const d = enhanced.data
+        for (let i = 0; i < d.length; i += 4) {
+          const avg = (d[i] + d[i+1] + d[i+2]) / 3
+          const val = avg > 128 ? 255 : 0
+          d[i] = val; d[i+1] = val; d[i+2] = val
+        }
+        ctx.putImageData(enhanced, 0, 0)
+        const enhanced2 = ctx.getImageData(0, 0, w, h)
+        code = window.jsQR(enhanced2.data, w, h, { inversionAttempts: 'attemptBoth' })
+      }
+
       if (code) {
         stopCamera()
-        cancelAnimationFrame(animRef.current)
         onResult(code.data)
         return
       }
@@ -310,22 +345,46 @@ function QRScanner({ onResult }) {
     reader.onload = (ev) => {
       const img = new Image()
       img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        if (window.jsQR) {
-          const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'attemptBoth'
-          })
-          if (code) {
-            onResult(code.data)
-          } else {
-            setError('No QR code found in image. Try a clearer photo.')
-            setMode('camera')
+        // Try multiple sizes for better detection
+        const sizes = [
+          { w: img.width, h: img.height },
+          { w: img.width * 2, h: img.height * 2 },
+          { w: 1200, h: Math.round(1200 * img.height / img.width) }
+        ]
+        let found = false
+        for (const size of sizes) {
+          if (found) break
+          const canvas = document.createElement('canvas')
+          canvas.width = size.w
+          canvas.height = size.h
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, size.w, size.h)
+
+          // Try raw image first
+          let imageData = ctx.getImageData(0, 0, size.w, size.h)
+          if (window.jsQR) {
+            let code = window.jsQR(imageData.data, size.w, size.h, {
+              inversionAttempts: 'attemptBoth'
+            })
+            if (code) { onResult(code.data); found = true; break }
+
+            // Try with contrast enhancement
+            const d = imageData.data
+            for (let i = 0; i < d.length; i += 4) {
+              const avg = (d[i] + d[i+1] + d[i+2]) / 3
+              const val = avg > 128 ? 255 : 0
+              d[i] = val; d[i+1] = val; d[i+2] = val
+            }
+            ctx.putImageData(imageData, 0, 0)
+            imageData = ctx.getImageData(0, 0, size.w, size.h)
+            code = window.jsQR(imageData.data, size.w, size.h, {
+              inversionAttempts: 'attemptBoth'
+            })
+            if (code) { onResult(code.data); found = true; break }
           }
+        }
+        if (!found) {
+          setError('No QR code found. Try better lighting or a clearer photo.')
         }
       }
       img.src = ev.target.result
@@ -354,6 +413,13 @@ function QRScanner({ onResult }) {
         ))}
       </div>
 
+      {!jsqrReady && (
+        <div className="px-3 py-2 rounded-lg text-xs text-center"
+          style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+          Loading QR scanner library...
+        </div>
+      )}
+
       {error && (
         <div className="px-4 py-3 rounded-xl text-sm text-center"
           style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
@@ -370,10 +436,16 @@ function QRScanner({ onResult }) {
               onClick={tapToFocus}
               className="w-full h-full object-cover cursor-pointer" />
             <canvas ref={canvasRef} className="hidden" />
+
+            {/* Scan overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative w-52 h-52">
                 <div className="absolute left-2 right-2 h-0.5 opacity-80"
-                  style={{ backgroundColor: '#0057FF', top: '50%', animation: 'scanLine 2s ease-in-out infinite' }} />
+                  style={{
+                    backgroundColor: '#0057FF',
+                    top: '50%',
+                    animation: 'scanLine 2s ease-in-out infinite'
+                  }} />
                 {[
                   'top-0 left-0 border-t-4 border-l-4 rounded-tl-lg',
                   'top-0 right-0 border-t-4 border-r-4 rounded-tr-lg',
@@ -385,19 +457,27 @@ function QRScanner({ onResult }) {
                 ))}
               </div>
             </div>
+
+            {/* Tap to focus hint */}
             <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-none">
               <span className="text-xs px-3 py-1 rounded-full"
                 style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FFFFFF' }}>
                 👆 Tap to focus
               </span>
             </div>
+
+            {/* Torch */}
             <button onClick={toggleTorch}
-              className="absolute top-3 right-3 w-9 h-9 rounded-lg flex items-center justify-center text-base"
+              className="absolute top-3 right-3 w-9 h-9 rounded-lg flex items-center justify-center text-base pointer-events-auto"
               style={{ backgroundColor: torch ? '#0057FF' : 'rgba(0,0,0,0.5)' }}>
               💡
             </button>
           </div>
-          <p className="text-xs text-center font-medium" style={{ color: '#8B94A6' }}>{hint}</p>
+
+          <p className="text-xs text-center font-medium" style={{ color: '#8B94A6' }}>
+            {hint}
+          </p>
+
           <div className="px-3 py-2.5 rounded-lg text-xs space-y-1"
             style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
             <div>📏 Best distance: <strong>15–20cm</strong> from QR code</div>
@@ -413,25 +493,37 @@ function QRScanner({ onResult }) {
         <div className="space-y-3">
           <div onClick={() => fileRef.current?.click()}
             className="flex flex-col items-center justify-center gap-3 rounded-xl cursor-pointer"
-            style={{ backgroundColor: '#F5F7FA', border: '2px dashed #E5E9F0', aspectRatio: '4/3' }}>
+            style={{
+              backgroundColor: '#F5F7FA',
+              border: '2px dashed #E5E9F0',
+              aspectRatio: '4/3'
+            }}>
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
               style={{ backgroundColor: '#E6EEFF' }}>
               <span className="text-2xl">🖼️</span>
             </div>
             <div className="text-center px-4">
               <p className="text-sm font-semibold" style={{ color: '#0D1B2A' }}>
-                Upload QR Code Image
+                Choose from Gallery
               </p>
               <p className="text-xs mt-1" style={{ color: '#8B94A6' }}>
-                Take a clear photo of the QR code and upload it here
+                Select a photo of the QR code from your phone gallery
               </p>
             </div>
           </div>
-          <input ref={fileRef} type="file" accept="image/*"
-            capture="environment" onChange={handleFileUpload} className="hidden" />
+
+          {/* No capture attribute — opens gallery directly */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
           <div className="px-3 py-2.5 rounded-lg text-xs"
             style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
-            📸 Take a photo or choose from gallery. Works even when live scan is blurry.
+            📸 Select any photo from your gallery. Works even when live scan is blurry.
           </div>
         </div>
       )}
