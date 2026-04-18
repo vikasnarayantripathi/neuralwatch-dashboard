@@ -1,13 +1,129 @@
-import React, { useEffect, useState } from 'react'
-import { Camera, Plus, Trash2, RefreshCw, Wifi, WifiOff, X, Play, Square } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { Camera, Plus, Trash2, RefreshCw, Wifi, WifiOff, X, Play, Square, QrCode, Keyboard } from 'lucide-react'
 import { getCameras, addCamera, deleteCamera, startStream, stopStream, getActiveStreams } from '../api'
 
+// ── QR Scanner Component ───────────────────────────────────
+function QRScanner({ onResult, onClose }) {
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const [error, setError] = useState('')
+  const [scanning, setScanning] = useState(true)
+
+  useEffect(() => {
+    startCamera()
+    return () => stopCamera()
+  }, [])
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+      scanLoop()
+    } catch (e) {
+      setError('Camera access denied. Please allow camera permission and try again.')
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+    }
+  }
+
+  const scanLoop = () => {
+    if (!scanning) return
+    if (!videoRef.current) return
+    const video = videoRef.current
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      try {
+        // Use BarcodeDetector if available (Chrome/Edge)
+        if ('BarcodeDetector' in window) {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+          detector.detect(canvas).then(codes => {
+            if (codes.length > 0) {
+              const result = codes[0].rawValue
+              stopCamera()
+              onResult(result)
+            } else {
+              setTimeout(scanLoop, 500)
+            }
+          }).catch(() => setTimeout(scanLoop, 500))
+        } else {
+          setError('QR scanning not supported on this browser. Please use Chrome or Edge, or enter URL manually.')
+        }
+      } catch (e) {
+        setTimeout(scanLoop, 500)
+      }
+    } else {
+      setTimeout(scanLoop, 500)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {error ? (
+        <div className="w-full px-4 py-3 rounded-lg text-sm font-medium text-center"
+          style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+          {error}
+        </div>
+      ) : (
+        <>
+          <div className="relative w-full rounded-xl overflow-hidden"
+            style={{ backgroundColor: '#0D1B2A', aspectRatio: '4/3' }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            {/* Scan overlay */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-48 h-48 border-2 border-white/60 rounded-xl relative">
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 rounded-tl-lg"
+                  style={{ borderColor: '#0057FF' }} />
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 rounded-tr-lg"
+                  style={{ borderColor: '#0057FF' }} />
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 rounded-bl-lg"
+                  style={{ borderColor: '#0057FF' }} />
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 rounded-br-lg"
+                  style={{ borderColor: '#0057FF' }} />
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-center" style={{ color: '#8B94A6' }}>
+            Point camera at the QR code on your IP camera
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Add Camera Modal ───────────────────────────────────────
 function AddCameraModal({ onClose, onAdded }) {
+  const [tab, setTab] = useState('manual') // 'manual' | 'qr'
   const [form, setForm] = useState({
     name: '', stream_url: '', location: '', username: '', password: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleQRResult = (result) => {
+    // QR code scanned — auto fill stream URL
+    setForm(f => ({ ...f, stream_url: result }))
+    setTab('manual')
+  }
 
   const handleSubmit = async () => {
     if (!form.name || !form.stream_url) {
@@ -32,7 +148,9 @@ function AddCameraModal({ onClose, onAdded }) {
       style={{ backgroundColor: 'rgba(13,27,42,0.5)' }}>
       <div className="w-full max-w-md rounded-2xl p-6 animate-slide-up"
         style={{ backgroundColor: '#FFFFFF', boxShadow: '0 25px 50px rgba(13,27,42,0.15)' }}>
-        <div className="flex items-center justify-between mb-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-lg font-bold" style={{ color: '#0D1B2A' }}>Add Camera</h2>
             <p className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>
@@ -44,55 +162,107 @@ function AddCameraModal({ onClose, onAdded }) {
             <X className="w-4 h-4" style={{ color: '#5A6478' }} />
           </button>
         </div>
-        <div className="space-y-3">
-          {[
-            { key: 'name', label: 'Camera Name *', placeholder: 'e.g. Front Door Camera' },
-            { key: 'stream_url', label: 'Stream URL *', placeholder: 'rtsp://192.168.1.x:554/stream' },
-            { key: 'location', label: 'Location', placeholder: 'e.g. Main Entrance' },
-            { key: 'username', label: 'Username', placeholder: 'admin' },
-            { key: 'password', label: 'Password', placeholder: '••••••••', type: 'password' },
-          ].map(({ key, label, placeholder, type }) => (
-            <div key={key}>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#5A6478' }}>
-                {label}
-              </label>
-              <input
-                type={type || 'text'}
-                placeholder={placeholder}
-                value={form[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm"
-                style={{ border: '1px solid #E5E9F0', backgroundColor: '#F5F7FA', color: '#0D1B2A' }}
-              />
-            </div>
-          ))}
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-5 p-1 rounded-lg" style={{ backgroundColor: '#F5F7FA' }}>
+          <button
+            onClick={() => setTab('manual')}
+            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold transition-all"
+            style={{
+              backgroundColor: tab === 'manual' ? '#FFFFFF' : 'transparent',
+              color: tab === 'manual' ? '#0D1B2A' : '#8B94A6',
+              boxShadow: tab === 'manual' ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
+            }}
+          >
+            <Keyboard className="w-3.5 h-3.5" />
+            Enter Details
+          </button>
+          <button
+            onClick={() => setTab('qr')}
+            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold transition-all"
+            style={{
+              backgroundColor: tab === 'qr' ? '#FFFFFF' : 'transparent',
+              color: tab === 'qr' ? '#0D1B2A' : '#8B94A6',
+              boxShadow: tab === 'qr' ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
+            }}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            Scan QR Code
+          </button>
         </div>
-        {error && (
-          <div className="mt-3 px-3.5 py-2.5 rounded-lg text-xs font-medium"
-            style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
-            {error}
+
+        {/* QR Tab */}
+        {tab === 'qr' && (
+          <QRScanner onResult={handleQRResult} onClose={() => setTab('manual')} />
+        )}
+
+        {/* Manual Tab */}
+        {tab === 'manual' && (
+          <div className="space-y-3">
+            {form.stream_url && (
+              <div className="px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2"
+                style={{ backgroundColor: '#D1FAE5', color: '#059669' }}>
+                <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
+                QR scanned — stream URL auto-filled
+              </div>
+            )}
+            {[
+              { key: 'name', label: 'Camera Name *', placeholder: 'e.g. Front Door Camera' },
+              { key: 'stream_url', label: 'Stream URL *', placeholder: 'rtsp://192.168.1.x:554/stream' },
+              { key: 'location', label: 'Location', placeholder: 'e.g. Main Entrance' },
+              { key: 'username', label: 'Username', placeholder: 'admin' },
+              { key: 'password', label: 'Password', placeholder: '••••••••', type: 'password' },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key}>
+                <label className="block text-xs font-semibold mb-1.5"
+                  style={{ color: '#5A6478' }}>
+                  {label}
+                </label>
+                <input
+                  type={type || 'text'}
+                  placeholder={placeholder}
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm"
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    backgroundColor: '#F5F7FA',
+                    color: '#0D1B2A'
+                  }}
+                />
+              </div>
+            ))}
+
+            {error && (
+              <div className="px-3.5 py-2.5 rounded-lg text-xs font-medium"
+                style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-2">
+              <button onClick={onClose}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
+                style={{ border: '1px solid #E5E9F0', color: '#5A6478' }}>
+                Cancel
+              </button>
+              <button onClick={handleSubmit} disabled={loading}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
+                style={{ backgroundColor: loading ? '#6B9FFF' : '#0057FF' }}>
+                {loading
+                  ? <><div className="nw-spinner !w-4 !h-4 !border-white/30 !border-t-white" />Adding...</>
+                  : 'Add Camera'
+                }
+              </button>
+            </div>
           </div>
         )}
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
-            style={{ border: '1px solid #E5E9F0', color: '#5A6478' }}>
-            Cancel
-          </button>
-          <button onClick={handleSubmit} disabled={loading}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
-            style={{ backgroundColor: loading ? '#6B9FFF' : '#0057FF' }}>
-            {loading
-              ? <><div className="nw-spinner !w-4 !h-4 !border-white/30 !border-t-white" />Adding...</>
-              : 'Add Camera'
-            }
-          </button>
-        </div>
       </div>
     </div>
   )
 }
 
+// ── Camera Card ────────────────────────────────────────────
 function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
   const isOnline = camera.status === 'online'
   const isStreaming = activeStreams.includes(camera.id)
@@ -134,8 +304,6 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
         boxShadow: '0 1px 3px rgba(13,27,42,0.06)',
         border: `1px solid ${isStreaming ? '#D1FAE5' : '#F0F3F8'}`
       }}>
-
-      {/* Top row */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -152,7 +320,6 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
             </div>
           </div>
         </div>
-        {/* Status badge */}
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5"
           style={{
             backgroundColor: isStreaming ? '#D1FAE5' : isOnline ? '#E6EEFF' : '#FEE2E2',
@@ -165,16 +332,11 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
           {isStreaming ? 'Recording' : isOnline ? 'Online' : 'Offline'}
         </span>
       </div>
-
-      {/* Stream URL */}
       <div className="px-3 py-2 rounded-lg mb-4 font-mono text-xs truncate"
         style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
         {camera.stream_url || camera.rtsp_url || 'No stream URL'}
       </div>
-
-      {/* Bottom row */}
       <div className="flex items-center justify-between gap-2">
-        {/* Stream toggle button */}
         <button
           onClick={handleStreamToggle}
           disabled={streamLoading}
@@ -185,17 +347,13 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
           }}
         >
           {streamLoading ? (
-            <div className="nw-spinner !w-3.5 !h-3.5"
-              style={{ borderColor: isStreaming ? '#FCA5A5' : 'rgba(255,255,255,0.3)',
-                borderTopColor: isStreaming ? '#DC2626' : '#FFFFFF' }} />
+            <div className="nw-spinner !w-3.5 !h-3.5" />
           ) : isStreaming ? (
             <><Square className="w-3.5 h-3.5" />Stop Recording</>
           ) : (
             <><Play className="w-3.5 h-3.5" />Start Recording</>
           )}
         </button>
-
-        {/* Delete button */}
         <button onClick={handleDelete} disabled={deleting}
           className="w-9 h-9 rounded-lg flex items-center justify-center transition-all"
           style={{ backgroundColor: '#F5F7FA', color: '#8B94A6' }}>
@@ -206,6 +364,7 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
   )
 }
 
+// ── Main Page ──────────────────────────────────────────────
 export default function Cameras() {
   const [cameras, setCameras] = useState([])
   const [activeStreams, setActiveStreams] = useState([])
@@ -235,7 +394,7 @@ export default function Cameras() {
       const res = await getActiveStreams()
       setActiveStreams(res?.data?.camera_ids || [])
     } catch (e) {
-      console.error('Failed to fetch active streams:', e)
+      console.error(e)
     }
   }
 
@@ -245,8 +404,6 @@ export default function Cameras() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-
-      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0D1B2A' }}>
@@ -272,7 +429,6 @@ export default function Cameras() {
         </div>
       </div>
 
-      {/* Recording banner */}
       {recordingCount > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
           style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0' }}>
@@ -280,12 +436,11 @@ export default function Cameras() {
             style={{ backgroundColor: '#10B981' }} />
           <span className="text-sm font-semibold" style={{ color: '#059669' }}>
             {recordingCount} camera{recordingCount !== 1 ? 's' : ''} currently recording
-            — footage saving to AI Database
+            — footage saving to Database
           </span>
         </div>
       )}
 
-      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="nw-spinner" />
