@@ -280,7 +280,7 @@ export default function Cameras() {
             style={{ backgroundColor: '#10B981' }} />
           <span className="text-sm font-semibold" style={{ color: '#059669' }}>
             {recordingCount} camera{recordingCount !== 1 ? 's' : ''} currently recording
-            — footage saving to Cloudflare R2
+            — footage saving to AI Database
           </span>
         </div>
       )}
