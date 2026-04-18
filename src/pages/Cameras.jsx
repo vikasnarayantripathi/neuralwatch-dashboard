@@ -121,7 +121,6 @@ function CameraViewer({ camera }) {
 
   return (
     <div className="mt-3 space-y-3">
-      {/* Tabs */}
       <div className="flex gap-2 p-1 rounded-lg" style={{ backgroundColor: '#F5F7FA' }}>
         {[
           { key: 'live', icon: Radio, label: 'Live', color: '#EF4444' },
@@ -140,18 +139,17 @@ function CameraViewer({ camera }) {
         ))}
       </div>
 
-      {/* Live */}
       {tab === 'live' && (
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444', animation: 'pulseDot 1.5s ease-in-out infinite' }} />
+            <div className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: '#EF4444', animation: 'pulseDot 1.5s ease-in-out infinite' }} />
             <span className="text-xs font-bold" style={{ color: '#EF4444' }}>LIVE</span>
           </div>
           <VideoPlayer src={liveUrl} autoPlay={true} />
         </div>
       )}
 
-      {/* Playback */}
       {tab === 'playback' && (
         <div className="space-y-3">
           {loadingDates ? (
@@ -193,17 +191,19 @@ function QRScanner({ onResult }) {
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const animRef = useRef(null)
+  const fileRef = useRef(null)
   const [error, setError] = useState('')
   const [torch, setTorch] = useState(false)
   const [hint, setHint] = useState('Initializing camera...')
+  const [mode, setMode] = useState('camera')
 
   useEffect(() => {
-    startCamera()
+    if (mode === 'camera') startCamera()
     return () => {
       stopCamera()
       if (animRef.current) cancelAnimationFrame(animRef.current)
     }
-  }, [])
+  }, [mode])
 
   const startCamera = async () => {
     try {
@@ -216,12 +216,20 @@ function QRScanner({ onResult }) {
         }
       })
       streamRef.current = stream
+      const track = stream.getVideoTracks()[0]
+      const capabilities = track.getCapabilities()
+      if (capabilities.zoom) {
+        const min = capabilities.zoom.min
+        const max = capabilities.zoom.max
+        const target = Math.min(min + (max - min) * 0.3, max)
+        await track.applyConstraints({ advanced: [{ zoom: target }] })
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.setAttribute('playsinline', true)
         videoRef.current.play()
         videoRef.current.onloadedmetadata = () => {
-          setHint('Point at QR code — hold steady')
+          setHint('Hold QR code 15-20cm away — tap to focus')
           tick()
         }
       }
@@ -235,12 +243,12 @@ function QRScanner({ onResult }) {
           videoRef.current.srcObject = stream
           videoRef.current.play()
           videoRef.current.onloadedmetadata = () => {
-            setHint('Point at QR code — hold steady')
+            setHint('Hold QR code 15-20cm away — tap to focus')
             tick()
           }
         }
       } catch {
-        setError('Camera access denied. Please allow camera permission and try again.')
+        setError('Camera access denied. Use Upload Image mode instead.')
       }
     }
   }
@@ -258,6 +266,17 @@ function QRScanner({ onResult }) {
     } catch {}
   }
 
+  const tapToFocus = async () => {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track) return
+    try {
+      await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: 0.3 }] })
+      setTimeout(async () => {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+      }, 1000)
+    } catch {}
+  }
+
   const tick = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -272,7 +291,7 @@ function QRScanner({ onResult }) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     if (window.jsQR) {
       const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert'
+        inversionAttempts: 'attemptBoth'
       })
       if (code) {
         stopCamera()
@@ -284,20 +303,74 @@ function QRScanner({ onResult }) {
     animRef.current = requestAnimationFrame(tick)
   }
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        if (window.jsQR) {
+          const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth'
+          })
+          if (code) {
+            onResult(code.data)
+          } else {
+            setError('No QR code found in image. Try a clearer photo.')
+            setMode('camera')
+          }
+        }
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className="space-y-3">
-      {error ? (
+      {/* Mode switcher */}
+      <div className="flex gap-2 p-1 rounded-lg" style={{ backgroundColor: '#F5F7FA' }}>
+        {[
+          { key: 'camera', label: '📷 Live Scan' },
+          { key: 'upload', label: '🖼️ Upload Image' }
+        ].map(({ key, label }) => (
+          <button key={key}
+            onClick={() => { stopCamera(); setMode(key); setError('') }}
+            className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
+            style={{
+              backgroundColor: mode === key ? '#FFFFFF' : 'transparent',
+              color: mode === key ? '#0D1B2A' : '#8B94A6',
+              boxShadow: mode === key ? '0 1px 3px rgba(13,27,42,0.08)' : 'none'
+            }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
         <div className="px-4 py-3 rounded-xl text-sm text-center"
           style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
           {error}
         </div>
-      ) : (
+      )}
+
+      {/* Camera mode */}
+      {mode === 'camera' && !error && (
         <>
           <div className="relative rounded-xl overflow-hidden"
             style={{ backgroundColor: '#0D1B2A', aspectRatio: '4/3' }}>
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            <video ref={videoRef} autoPlay playsInline muted
+              onClick={tapToFocus}
+              className="w-full h-full object-cover cursor-pointer" />
             <canvas ref={canvasRef} className="hidden" />
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="relative w-52 h-52">
                 <div className="absolute left-2 right-2 h-0.5 opacity-80"
                   style={{ backgroundColor: '#0057FF', top: '50%', animation: 'scanLine 2s ease-in-out infinite' }} />
@@ -312,6 +385,12 @@ function QRScanner({ onResult }) {
                 ))}
               </div>
             </div>
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-none">
+              <span className="text-xs px-3 py-1 rounded-full"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FFFFFF' }}>
+                👆 Tap to focus
+              </span>
+            </div>
             <button onClick={toggleTorch}
               className="absolute top-3 right-3 w-9 h-9 rounded-lg flex items-center justify-center text-base"
               style={{ backgroundColor: torch ? '#0057FF' : 'rgba(0,0,0,0.5)' }}>
@@ -319,11 +398,44 @@ function QRScanner({ onResult }) {
             </button>
           </div>
           <p className="text-xs text-center font-medium" style={{ color: '#8B94A6' }}>{hint}</p>
-          <div className="px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
-            💡 Tips: Good lighting helps. Hold phone 15-20cm from QR code. Tap 💡 for flashlight.
+          <div className="px-3 py-2.5 rounded-lg text-xs space-y-1"
+            style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
+            <div>📏 Best distance: <strong>15–20cm</strong> from QR code</div>
+            <div>💡 Dark room? Tap the flashlight button</div>
+            <div>👆 Tap screen to trigger focus</div>
+            <div>🖼️ Still blurry? Switch to <strong>Upload Image</strong> tab</div>
           </div>
         </>
       )}
+
+      {/* Upload mode */}
+      {mode === 'upload' && (
+        <div className="space-y-3">
+          <div onClick={() => fileRef.current?.click()}
+            className="flex flex-col items-center justify-center gap-3 rounded-xl cursor-pointer"
+            style={{ backgroundColor: '#F5F7FA', border: '2px dashed #E5E9F0', aspectRatio: '4/3' }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: '#E6EEFF' }}>
+              <span className="text-2xl">🖼️</span>
+            </div>
+            <div className="text-center px-4">
+              <p className="text-sm font-semibold" style={{ color: '#0D1B2A' }}>
+                Upload QR Code Image
+              </p>
+              <p className="text-xs mt-1" style={{ color: '#8B94A6' }}>
+                Take a clear photo of the QR code and upload it here
+              </p>
+            </div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*"
+            capture="environment" onChange={handleFileUpload} className="hidden" />
+          <div className="px-3 py-2.5 rounded-lg text-xs"
+            style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
+            📸 Take a photo or choose from gallery. Works even when live scan is blurry.
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes scanLine {
           0%, 100% { top: 10%; opacity: 0.3; }
@@ -375,7 +487,9 @@ function AddCameraModal({ onClose, onAdded }) {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-lg font-bold" style={{ color: '#0D1B2A' }}>Add Camera</h2>
-            <p className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>Connect an IP camera or RTSP stream</p>
+            <p className="text-xs mt-0.5" style={{ color: '#8B94A6' }}>
+              Connect an IP camera or RTSP stream
+            </p>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100">
@@ -505,7 +619,8 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: isStreaming ? '#D1FAE5' : '#F5F7FA' }}>
-            <Camera className="w-5 h-5" style={{ color: isStreaming ? '#10B981' : '#8B94A6' }} />
+            <Camera className="w-5 h-5"
+              style={{ color: isStreaming ? '#10B981' : '#8B94A6' }} />
           </div>
           <div>
             <div className="font-bold text-sm" style={{ color: '#0D1B2A' }}>{camera.name}</div>
