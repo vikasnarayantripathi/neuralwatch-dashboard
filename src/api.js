@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = 'https://neuralwatch-api.onrender.com'
+const API_BASE = 'https://neuralwatch-api-production.up.railway.app'
 
 const api = axios.create({
   baseURL: API_BASE,
