@@ -84,7 +84,7 @@ function CameraViewer({ camera }) {
   const [playlistUrl, setPlaylistUrl] = useState('')
   const [loadingDates, setLoadingDates] = useState(false)
 
-  const liveUrl = `https://neuralwatch-api-production.up.railway.app/api/playback/${camera.id}/playlist`
+ const liveUrl = camera.hls_url || `https://mediamtx-production-6ed6.up.railway.app/${camera.stream_path}/index.m3u8``
 
   useEffect(() => {
     if (tab === 'playback') fetchDates()
