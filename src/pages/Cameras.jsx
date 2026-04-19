@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
 import Hls from 'hls.js'
 import {
-  Camera, Plus, Trash2, RefreshCw, X,
-  Play, Square, QrCode, Keyboard,
-  Video, VideoOff, ChevronDown, ChevronUp,
+  Camera, Plus, Trash2, RefreshCw,
+  Play, Square, Video, VideoOff, ChevronDown, ChevronUp,
   Calendar, Radio, Grid, List
 } from 'lucide-react'
 import {
-  getCameras, addCamera, deleteCamera,
+  getCameras, deleteCamera,
   startStream, stopStream, getActiveStreams,
   getPlaylist, getRecordingDates
 } from '../api'
@@ -84,7 +83,9 @@ function CameraViewer({ camera }) {
   const [playlistUrl, setPlaylistUrl] = useState('')
   const [loadingDates, setLoadingDates] = useState(false)
 
- const liveUrl = camera.hls_url || `https://mediamtx-production-6ed6.up.railway.app/${camera.stream_path}/index.m3u8``
+  // ✅ FIX: Use hls_url directly from camera object
+  const liveUrl = camera.hls_url ||
+    `https://mediamtx-production-6ed6.up.railway.app/${camera.stream_path}/index.m3u8`
 
   useEffect(() => {
     if (tab === 'playback') fetchDates()
@@ -157,9 +158,7 @@ function CameraViewer({ camera }) {
           ) : dates.length === 0 ? (
             <div className="text-center py-8 rounded-xl" style={{ backgroundColor: '#F5F7FA' }}>
               <Calendar className="w-8 h-8 mx-auto mb-2" style={{ color: '#D1D8E2' }} />
-              <p className="text-xs" style={{ color: '#8B94A6' }}>
-                No recordings yet.
-              </p>
+              <p className="text-xs" style={{ color: '#8B94A6' }}>No recordings yet.</p>
             </div>
           ) : (
             <>
@@ -185,7 +184,9 @@ function CameraViewer({ camera }) {
 
 // ── Camera Card ────────────────────────────────────────────
 function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
+  const isRTMP = camera.connection_method === 'rtmp_push' || camera.connection_method === 'qr_provision'
   const isStreaming = activeStreams.includes(camera.id)
+  const isOnline = camera.connection_status === 'online' || camera.status === 'online'
   const [deleting, setDeleting] = useState(false)
   const [streamLoading, setStreamLoading] = useState(false)
   const [showViewer, setShowViewer] = useState(false)
@@ -202,7 +203,12 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
     }
   }
 
- const handleStreamToggle = async () => {
+  // ✅ FIX: RTMP cameras don't need start/stop — just toggle viewer
+  const handleStreamToggle = async () => {
+    if (isRTMP) {
+      setShowViewer(v => !v)
+      return
+    }
     setStreamLoading(true)
     try {
       if (isStreaming) await stopStream(camera.id)
@@ -215,59 +221,75 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
     }
   }
 
+  // ✅ FIX: Status display based on connection_status
+  const statusLabel = isRTMP
+    ? (isOnline ? 'Live' : 'Waiting')
+    : (isStreaming ? 'Recording' : 'Offline')
+
+  const statusColor = isRTMP
+    ? (isOnline ? '#059669' : '#D97706')
+    : (isStreaming ? '#059669' : '#DC2626')
+
+  const statusBg = isRTMP
+    ? (isOnline ? '#D1FAE5' : '#FEF3C7')
+    : (isStreaming ? '#D1FAE5' : '#FEE2E2')
+
   return (
     <div className="rounded-xl p-5 transition-all"
       style={{
         backgroundColor: '#FFFFFF',
         boxShadow: '0 1px 3px rgba(13,27,42,0.06)',
-        border: `1px solid ${isStreaming ? '#D1FAE5' : '#F0F3F8'}`
+        border: `1px solid ${isOnline ? '#D1FAE5' : '#F0F3F8'}`
       }}>
 
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: isStreaming ? '#D1FAE5' : '#F5F7FA' }}>
+            style={{ backgroundColor: isOnline ? '#D1FAE5' : '#F5F7FA' }}>
             <Camera className="w-5 h-5"
-              style={{ color: isStreaming ? '#10B981' : '#8B94A6' }} />
+              style={{ color: isOnline ? '#10B981' : '#8B94A6' }} />
           </div>
           <div>
             <div className="font-bold text-sm" style={{ color: '#0D1B2A' }}>{camera.name}</div>
             <div className="text-xs mt-0.5 capitalize" style={{ color: '#8B94A6' }}>
               {camera.camera_brand || camera.brand || 'Generic'} ·{' '}
-              <span style={{ color: camera.connection_status === 'online' ? '#10B981' : '#8B94A6' }}>
-                {camera.connection_status || 'offline'}
-              </span>
+              {isRTMP ? 'RTMP Push' : 'RTSP Pull'}
             </div>
           </div>
         </div>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5"
-          style={{
-            backgroundColor: isStreaming ? '#D1FAE5' : '#FEE2E2',
-            color: isStreaming ? '#059669' : '#DC2626'
-          }}>
+          style={{ backgroundColor: statusBg, color: statusColor }}>
           <span className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: isStreaming ? '#10B981' : '#EF4444' }} />
-          {isStreaming ? 'Recording' : 'Offline'}
+            style={{ backgroundColor: statusColor }} />
+          {statusLabel}
         </span>
       </div>
 
-      {/* Stream path / URL */}
+      {/* Stream path */}
       <div className="px-3 py-2 rounded-lg mb-3 font-mono text-xs truncate"
         style={{ backgroundColor: '#F5F7FA', color: '#5A6478' }}>
         {camera.stream_path
           ? `MediaMTX: ${camera.stream_path}`
-          : camera.stream_url || camera.rtsp_url || 'No stream URL'}
+          : camera.hls_url || camera.rtsp_url || 'No stream configured'}
       </div>
 
       <div className="flex items-center gap-2 mb-2">
+
+        {/* ✅ FIX: RTMP cameras show "Live View" button, RTSP show Start/Stop */}
         <button onClick={handleStreamToggle} disabled={streamLoading}
           className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all"
           style={{
-            backgroundColor: isStreaming ? '#FEE2E2' : '#0057FF',
-            color: isStreaming ? '#DC2626' : '#FFFFFF'
+            backgroundColor: isRTMP
+              ? '#0057FF'
+              : isStreaming ? '#FEE2E2' : '#0057FF',
+            color: isRTMP
+              ? '#FFFFFF'
+              : isStreaming ? '#DC2626' : '#FFFFFF'
           }}>
           {streamLoading ? (
             <div className="nw-spinner !w-3.5 !h-3.5" />
+          ) : isRTMP ? (
+            <><Video className="w-3.5 h-3.5" />{showViewer ? 'Hide' : 'Live View'}</>
           ) : isStreaming ? (
             <><Square className="w-3.5 h-3.5" />Stop</>
           ) : (
@@ -275,18 +297,21 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
           )}
         </button>
 
-        <button onClick={() => setShowViewer(v => !v)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{
-            backgroundColor: showViewer ? '#E6EEFF' : '#F5F7FA',
-            color: showViewer ? '#0057FF' : '#5A6478'
-          }}>
-          <Video className="w-3.5 h-3.5" />
-          {showViewer
-            ? <ChevronUp className="w-3 h-3" />
-            : <ChevronDown className="w-3 h-3" />
-          }
-        </button>
+        {/* Expand viewer button — only for RTSP cameras */}
+        {!isRTMP && (
+          <button onClick={() => setShowViewer(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              backgroundColor: showViewer ? '#E6EEFF' : '#F5F7FA',
+              color: showViewer ? '#0057FF' : '#5A6478'
+            }}>
+            <Video className="w-3.5 h-3.5" />
+            {showViewer
+              ? <ChevronUp className="w-3 h-3" />
+              : <ChevronDown className="w-3 h-3" />
+            }
+          </button>
+        )}
 
         <button onClick={handleDelete} disabled={deleting}
           className="w-9 h-9 rounded-lg flex items-center justify-center"
@@ -302,11 +327,11 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
 
 // ── Main Cameras Page ──────────────────────────────────────
 export default function Cameras() {
-  const [cameras, setCameras]       = useState([])
+  const [cameras, setCameras]           = useState([])
   const [activeStreams, setActiveStreams] = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [showWizard, setShowWizard] = useState(false)
-  const [viewMode, setViewMode]     = useState('list') // 'list' | 'grid'
+  const [loading, setLoading]           = useState(true)
+  const [showWizard, setShowWizard]     = useState(false)
+  const [viewMode, setViewMode]         = useState('list')
 
   const fetchAll = async () => {
     setLoading(true)
@@ -358,13 +383,10 @@ export default function Cameras() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View toggle */}
           {cameras.length > 0 && (
             <div className="flex items-center gap-1 p-1 rounded-lg"
               style={{ backgroundColor: '#F5F7FA', border: '1px solid #E5E9F0' }}>
-              <button
-                onClick={() => setViewMode('list')}
-                title="List view"
+              <button onClick={() => setViewMode('list')} title="List view"
                 className="w-8 h-8 rounded-md flex items-center justify-center transition-colors"
                 style={{
                   backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
@@ -373,9 +395,7 @@ export default function Cameras() {
                 }}>
                 <List className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                title="Live grid view"
+              <button onClick={() => setViewMode('grid')} title="Live grid view"
                 className="w-8 h-8 rounded-md flex items-center justify-center transition-colors"
                 style={{
                   backgroundColor: viewMode === 'grid' ? '#FFFFFF' : 'transparent',
@@ -441,13 +461,11 @@ export default function Cameras() {
         </div>
 
       ) : viewMode === 'grid' ? (
-        /* ── Live Grid View ── */
         <div style={{ height: 'calc(100vh - 220px)' }}>
           <CameraGrid cameras={cameras} />
         </div>
 
       ) : (
-        /* ── List View ── */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {cameras.map((cam, i) => (
             <CameraCard
