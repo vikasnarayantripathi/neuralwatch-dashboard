@@ -27,64 +27,71 @@ api.interceptors.response.use(
   }
 )
 
-// Auth
+// ── Auth ──────────────────────────────────────────────────
 export const login = (email, password) =>
   api.post('/api/auth/login', { email, password })
-
 export const register = (name, email, password) =>
   api.post('/api/auth/register', { name, email, password })
-
 export const getMe = () =>
   api.get('/api/auth/me')
 
-// Cameras — use rtsp_url to match backend
+// ── Cameras (original) ────────────────────────────────────
 export const getCameras = () =>
   api.get('/api/cameras')
-
 export const addCamera = (data) =>
   api.post('/api/cameras', {
     name: data.name,
     rtsp_url: data.stream_url || data.rtsp_url,
     brand: data.brand || 'generic'
   })
-
 export const deleteCamera = (id) =>
   api.delete(`/api/cameras/${id}`)
-
 export const getCameraHealth = (id) =>
   api.get(`/api/cameras/${id}/health`)
 
-// Alerts
+// ── Cameras (new wizard) ──────────────────────────────────
+export const testCameraConnection = (data) =>
+  api.post('/api/cameras/test-connection', data)
+export const addRTSPCamera = (data) =>
+  api.post('/api/cameras/add-rtsp', data)
+export const addRTMPCamera = (data) =>
+  api.post('/api/cameras/add-rtmp', data)
+export const addQRCamera = (data) =>
+  api.post('/api/cameras/add-qr', data)
+export const getCameraStatus = (id) =>
+  api.get(`/api/cameras/${id}/status`)
+export const getCameraStream = (id) =>
+  api.get(`/api/cameras/${id}/stream`)
+export const getCameraPushConfig = (id) =>
+  api.get(`/api/cameras/${id}/push-config`)
+export const getBrandTemplates = () =>
+  api.get('/api/cameras/brands/templates')
+
+// ── Alerts ────────────────────────────────────────────────
 export const getAlerts = () =>
   api.get('/api/alerts')
-
 export const dismissAlert = (id) =>
   api.post(`/api/alerts/${id}/dismiss`)
-
 export const confirmAlert = (id) =>
   api.post(`/api/alerts/${id}/confirm`)
 
-// Relay
+// ── Relay ─────────────────────────────────────────────────
 export const getRelays = () =>
   api.get('/api/relay')
 
-// Stream control
+// ── Stream control ────────────────────────────────────────
 export const startStream = (cameraId) =>
   api.post(`/api/stream/${cameraId}/start`)
-
 export const stopStream = (cameraId) =>
   api.post(`/api/stream/${cameraId}/stop`)
-
 export const getActiveStreams = () =>
   api.get('/api/stream/active')
 
-// Playback
+// ── Playback ──────────────────────────────────────────────
 export const getSegments = (cameraId, date) =>
   api.get(`/api/playback/${cameraId}/segments${date ? `?date=${date}` : ''}`)
-
 export const getPlaylist = (cameraId, date) =>
   api.get(`/api/playback/${cameraId}/playlist${date ? `?date=${date}` : ''}`)
-
 export const getRecordingDates = (cameraId) =>
   api.get(`/api/playback/${cameraId}/dates`)
 
