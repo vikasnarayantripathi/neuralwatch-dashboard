@@ -3,42 +3,23 @@ import {
   testCameraConnection,
   addRTSPCamera,
   addRTMPCamera,
-  addQRCamera,
   getCameraStatus
 } from '../api'
 
 const BRANDS = [
-  { brand: 'trueview',  label: 'TrueView',  path: '/stream1',                                port: 554, user: 'admin' },
-  { brand: 'hikvision', label: 'Hikvision', path: '/Streaming/Channels/101',                 port: 554, user: 'admin' },
-  { brand: 'dahua',     label: 'Dahua',     path: '/cam/realmonitor?channel=1&subtype=0',     port: 554, user: 'admin' },
-  { brand: 'cpplus',    label: 'CP Plus',   path: '/live',                                    port: 554, user: 'admin' },
-  { brand: 'reolink',   label: 'Reolink',   path: '/h264Preview_01_main',                     port: 554, user: 'admin' },
-  { brand: 'tapo',      label: 'Tapo',      path: '/stream1',                                 port: 554, user: 'admin' },
-  { brand: 'generic',   label: 'Other',     path: '/stream1',                                 port: 554, user: 'admin' },
+  { brand: 'trueview',  label: 'TrueView',  path: '/stream1',                             port: 554, user: 'admin' },
+  { brand: 'hikvision', label: 'Hikvision', path: '/Streaming/Channels/101',              port: 554, user: 'admin' },
+  { brand: 'dahua',     label: 'Dahua',     path: '/cam/realmonitor?channel=1&subtype=0',  port: 554, user: 'admin' },
+  { brand: 'cpplus',    label: 'CP Plus',   path: '/live',                                port: 554, user: 'admin' },
+  { brand: 'reolink',   label: 'Reolink',   path: '/h264Preview_01_main',                 port: 554, user: 'admin' },
+  { brand: 'tapo',      label: 'Tapo',      path: '/stream1',                             port: 554, user: 'admin' },
+  { brand: 'generic',   label: 'Other',     path: '/stream1',                             port: 554, user: 'admin' },
 ]
 
 const TABS = [
-  {
-    id: 'scan',
-    label: 'Scan QR',
-    icon: '📷',
-    sub: 'Scan the QR code printed on your camera',
-    badge: 'Easiest',
-  },
-  {
-    id: 'rtsp',
-    label: 'RTSP URL',
-    icon: '🔗',
-    sub: 'Enter camera IP and credentials manually',
-    badge: null,
-  },
-  {
-    id: 'rtmp',
-    label: 'RTMP Push',
-    icon: '📡',
-    sub: 'Camera pushes stream to cloud — no port forwarding',
-    badge: null,
-  },
+  { id: 'scan', label: 'Scan QR', icon: '📷', sub: 'Scan the QR code printed on your camera', badge: 'Easiest' },
+  { id: 'rtsp', label: 'RTSP URL', icon: '🔗', sub: 'Enter camera IP and credentials manually', badge: null },
+  { id: 'rtmp', label: 'RTMP Push', icon: '📡', sub: 'Camera pushes stream to cloud — no port forwarding', badge: null },
 ]
 
 export default function AddCameraWizard({ onClose, onCameraAdded }) {
@@ -54,10 +35,7 @@ export default function AddCameraWizard({ onClose, onCameraAdded }) {
   if (success) {
     return (
       <Overlay onClose={onClose}>
-        <SuccessScreen
-          camera={success}
-          onDone={() => { onCameraAdded(success); onClose() }}
-        />
+        <SuccessScreen camera={success} onDone={() => { onCameraAdded(success); onClose() }} />
       </Overlay>
     )
   }
@@ -67,9 +45,7 @@ export default function AddCameraWizard({ onClose, onCameraAdded }) {
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-gray-100">
         <h2 className="text-xl font-bold text-gray-900">Add Camera</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Connect any IP camera to NeuralWatch cloud
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Connect any IP camera to NeuralWatch cloud</p>
       </div>
 
       {/* Tabs */}
@@ -81,9 +57,7 @@ export default function AddCameraWizard({ onClose, onCameraAdded }) {
             className={`
               flex items-center gap-2 px-4 py-3 text-sm font-medium
               border-b-2 whitespace-nowrap transition-colors flex-1 justify-center
-              ${tab === t.id
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'}
+              ${tab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}
             `}
           >
             <span>{t.icon}</span>
@@ -97,11 +71,9 @@ export default function AddCameraWizard({ onClose, onCameraAdded }) {
         ))}
       </div>
 
-      {/* Tab subtitle */}
+      {/* Subtitle */}
       <div className="px-6 py-2 bg-gray-50 border-b border-gray-100">
-        <p className="text-xs text-gray-500">
-          {TABS.find(t => t.id === tab)?.sub}
-        </p>
+        <p className="text-xs text-gray-500">{TABS.find(t => t.id === tab)?.sub}</p>
       </div>
 
       {/* Content */}
@@ -121,10 +93,7 @@ function Overlay({ children, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden relative"
-        style={{ maxHeight: '90vh' }}
-      >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden relative" style={{ maxHeight: '90vh' }}>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-sm"
@@ -135,7 +104,7 @@ function Overlay({ children, onClose }) {
   )
 }
 
-// ── Tab 1: Scan QR on camera body ─────────────────────────────────────────────
+// ── Tab 1: Scan QR ────────────────────────────────────────────────────────────
 function ScanQRTab({ onSuccess }) {
   const videoRef  = useRef(null)
   const canvasRef = useRef(null)
@@ -143,16 +112,13 @@ function ScanQRTab({ onSuccess }) {
   const animRef   = useRef(null)
   const fileRef   = useRef(null)
 
-  const [mode, setMode]       = useState('camera') // 'camera' | 'upload'
-  const [scanned, setScanned] = useState(null)     // raw QR text
-  const [form, setForm]       = useState({
-    name: '', cam_password: '', camera_brand: 'trueview'
-  })
+  const [mode, setMode]       = useState('camera')
+  const [scanned, setScanned] = useState(null)
+  const [form, setForm]       = useState({ name: '', cam_password: '', camera_brand: 'trueview', local_ip: '' })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [hint, setHint]       = useState('Point camera at the QR code on your device')
 
-  // ── Start camera ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mode === 'camera' && !scanned) startCamera()
     return () => stopCamera()
@@ -161,14 +127,15 @@ function ScanQRTab({ onSuccess }) {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
-        setHint('Hold QR code 15–20cm from camera — tap screen to focus')
-        setTimeout(() => tick(), 500)
+        setHint('Align the QR code inside the box — tap screen to focus')
+        videoRef.current.onloadeddata = () => startScanning()
+        setTimeout(() => startScanning(), 1000)
       }
     } catch {
       setError('Camera access denied. Use "Upload Photo" instead.')
@@ -177,32 +144,61 @@ function ScanQRTab({ onSuccess }) {
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop())
-    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (animRef.current) { clearInterval(animRef.current); animRef.current = null }
+  }
+
+  const startScanning = () => {
+    if (animRef.current) return
+    animRef.current = setInterval(() => tick(), 200)
   }
 
   const tick = () => {
     const video  = videoRef.current
     const canvas = canvasRef.current
-    if (!video || !canvas || video.readyState < 2) {
-      animRef.current = requestAnimationFrame(tick)
-      return
-    }
-    canvas.width  = video.videoWidth
-    canvas.height = video.videoHeight
+    if (!video || !canvas) return
+    if (video.readyState < 2) return
+    if (video.videoWidth === 0) return
+    if (!window.jsQR) return
+
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+
+    // Only scan centre 40% — matches the small scan box on screen
+    const cropSize = Math.min(vw, vh) * 0.40
+    const cropX    = (vw - cropSize) / 2
+    const cropY    = (vh - cropSize) / 2
+
+    canvas.width  = cropSize
+    canvas.height = cropSize
+
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize)
+
+    // Try 1: normal scan
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    if (window.jsQR) {
-      const code = window.jsQR(imageData.data, canvas.width, canvas.height, {
+    let code = window.jsQR(imageData.data, canvas.width, canvas.height, {
+      inversionAttempts: 'attemptBoth'
+    })
+
+    // Try 2: contrast enhancement
+    if (!code) {
+      const d = imageData.data
+      for (let i = 0; i < d.length; i += 4) {
+        const avg = (d[i] + d[i + 1] + d[i + 2]) / 3
+        const val = avg > 128 ? 255 : 0
+        d[i] = val; d[i + 1] = val; d[i + 2] = val
+      }
+      ctx.putImageData(imageData, 0, 0)
+      const enhanced = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      code = window.jsQR(enhanced.data, canvas.width, canvas.height, {
         inversionAttempts: 'attemptBoth'
       })
-      if (code) {
-        stopCamera()
-        handleQRResult(code.data)
-        return
-      }
     }
-    animRef.current = requestAnimationFrame(tick)
+
+    if (code && code.data) {
+      stopCamera()
+      handleQRResult(code.data)
+    }
   }
 
   const handleFileUpload = (e) => {
@@ -213,59 +209,40 @@ function ScanQRTab({ onSuccess }) {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        canvas.width  = img.width
-        canvas.height = img.height
+        canvas.width = img.width; canvas.height = img.height
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0)
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         if (window.jsQR) {
-          const code = window.jsQR(imageData.data, canvas.width, canvas.height, {
-            inversionAttempts: 'attemptBoth'
-          })
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const code = window.jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' })
           if (code) { handleQRResult(code.data); return }
         }
-        setError('No QR code found in image. Try better lighting or a closer photo.')
+        setError('No QR code found. Try a clearer photo with better lighting.')
       }
       img.src = ev.target.result
     }
     reader.readAsDataURL(file)
   }
 
-  // ── Parse QR result ───────────────────────────────────────────────────────
   const handleQRResult = (text) => {
     setScanned(text)
-    // Try to extract IP from common QR formats
-    // TrueView format: device serial / P2P ID / sometimes RTSP URL
-    let detectedIp = ''
     const ipMatch = text.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)
-    if (ipMatch) detectedIp = ipMatch[1]
-
-    setForm(f => ({
-      ...f,
-      scanned_text: text,
-      local_ip: detectedIp,
-    }))
+    setForm(f => ({ ...f, scanned_text: text, local_ip: ipMatch ? ipMatch[1] : '' }))
   }
 
-  // ── Save camera after QR scanned ──────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Camera name is required'); return }
+    if (!form.name.trim())       { setError('Camera name is required'); return }
     if (!form.cam_password.trim()) { setError('Password is required'); return }
+    if (!form.local_ip.trim())   { setError('Camera IP address is required'); return }
     setSaving(true); setError('')
-
-    // Find brand template
     const brand = BRANDS.find(b => b.brand === form.camera_brand)
-
     try {
       const res = await addRTSPCamera({
-        name:          form.name,
-        camera_brand:  form.camera_brand,
-        local_ip:      form.local_ip || '0.0.0.0',
-        rtsp_port:     brand?.port || 554,
-        rtsp_path:     brand?.path || '/stream1',
-        cam_username:  brand?.user || 'admin',
-        cam_password:  form.cam_password,
-        has_ptz:       false,
+        name: form.name, camera_brand: form.camera_brand,
+        local_ip: form.local_ip, rtsp_port: brand?.port || 554,
+        rtsp_path: brand?.path || '/stream1',
+        cam_username: brand?.user || 'admin',
+        cam_password: form.cam_password, has_ptz: false,
       })
       onSuccess(res.data)
     } catch (e) {
@@ -275,25 +252,19 @@ function ScanQRTab({ onSuccess }) {
     }
   }
 
-  // ── After QR scanned — show form ──────────────────────────────────────────
+  // ── After QR scanned ──────────────────────────────────────────────────────
   if (scanned) {
     return (
       <div className="p-6 space-y-4">
-        {/* Scanned result */}
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="font-bold text-green-800 flex items-center gap-2">
-            <span>✅</span> QR Code scanned!
-          </p>
+          <p className="font-bold text-green-800">✅ QR Code scanned!</p>
           <p className="text-green-700 text-xs mt-1 font-mono break-all">
             {scanned.slice(0, 80)}{scanned.length > 80 ? '...' : ''}
           </p>
         </div>
 
-        {/* Camera name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Camera Name *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Camera Name *</label>
           <input
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
             placeholder="e.g. Front Door, Living Room"
@@ -303,78 +274,55 @@ function ScanQRTab({ onSuccess }) {
           />
         </div>
 
-        {/* Camera IP (auto-filled if found in QR) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Camera IP Address *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Camera IP Address *</label>
           <input
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-blue-500"
             placeholder="192.168.1.x"
-            value={form.local_ip || ''}
+            value={form.local_ip}
             onChange={e => setForm(f => ({ ...f, local_ip: e.target.value }))}
           />
-          <p className="text-xs text-gray-400 mt-1">
-            Find this in your router's connected devices list
-          </p>
+          <p className="text-xs text-gray-400 mt-1">Find in your router's connected devices list</p>
         </div>
 
-        {/* Brand */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Camera Brand
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Camera Brand</label>
           <div className="grid grid-cols-4 gap-2">
             {BRANDS.map(b => (
-              <button
-                key={b.brand}
+              <button key={b.brand}
                 onClick={() => setForm(f => ({ ...f, camera_brand: b.brand }))}
                 className={`text-xs px-2 py-2 rounded-lg border transition-colors
-                  ${form.camera_brand === b.brand
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
+                  ${form.camera_brand === b.brand ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600'}`}>
                 {b.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Password */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Camera Password *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Camera Password *</label>
           <input
             type="password"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-            placeholder="Default is usually: admin or admin123"
+            placeholder="Default: admin123 or admin"
             value={form.cam_password}
             onChange={e => setForm(f => ({ ...f, cam_password: e.target.value }))}
+            autoComplete="new-password"
           />
-          <p className="text-xs text-gray-400 mt-1">
-            TrueView default password: <strong>admin123</strong> or <strong>admin</strong>
-          </p>
+          <p className="text-xs text-gray-400 mt-1">TrueView default: <strong>admin123</strong></p>
         </div>
 
-        {error && (
-          <p className="text-red-500 text-sm bg-red-50 rounded-lg p-3">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg p-3">{error}</p>}
 
         <div className="flex gap-3">
           <button
             onClick={() => { setScanned(null); setForm(f => ({ ...f, name: '', cam_password: '' })) }}
             className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50"
-          >
-            ← Rescan
-          </button>
+          >← Rescan</button>
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
-          >
-            {saving ? 'Adding Camera...' : 'Add Camera →'}
-          </button>
+            onClick={handleSave} disabled={saving}
+            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-40"
+          >{saving ? 'Adding Camera...' : 'Add Camera →'}</button>
         </div>
       </div>
     )
@@ -383,32 +331,22 @@ function ScanQRTab({ onSuccess }) {
   // ── Scanner UI ────────────────────────────────────────────────────────────
   return (
     <div className="p-5 space-y-4">
-
       {/* Mode toggle */}
       <div className="flex gap-2 p-1 rounded-xl bg-gray-100">
         <button
           onClick={() => { setMode('camera'); setError('') }}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors
-            ${mode === 'camera' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
-        >
-          📷 Live Scan
-        </button>
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${mode === 'camera' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+        >📷 Live Scan</button>
         <button
           onClick={() => { stopCamera(); setMode('upload'); setError('') }}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors
-            ${mode === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
-        >
-          🖼️ Upload Photo
-        </button>
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${mode === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+        >🖼️ Upload Photo</button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>
       )}
 
-      {/* Camera scanner */}
       {mode === 'camera' && (
         <>
           <div
@@ -423,53 +361,54 @@ function ScanQRTab({ onSuccess }) {
               } catch {}
             }}
           >
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover cursor-pointer"
-            />
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover cursor-pointer" />
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* Scan frame overlay */}
+            {/* Dark overlay outside scan box */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="relative w-52 h-52">
-                {/* Corners */}
-                {['top-0 left-0 border-t-4 border-l-4 rounded-tl-xl',
-                  'top-0 right-0 border-t-4 border-r-4 rounded-tr-xl',
-                  'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-xl',
-                  'bottom-0 right-0 border-b-4 border-r-4 rounded-br-xl'
+              <div className="absolute inset-0 bg-black/50" />
+
+              {/* Small scan box */}
+              <div className="relative z-10" style={{ width: '140px', height: '140px' }}>
+                {/* Clear the dark overlay inside box */}
+                <div className="absolute inset-0"
+                  style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)', background: 'transparent' }} />
+
+                {/* Corner brackets */}
+                {[
+                  'top-0 left-0 border-t-4 border-l-4 rounded-tl-lg',
+                  'top-0 right-0 border-t-4 border-r-4 rounded-tr-lg',
+                  'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-lg',
+                  'bottom-0 right-0 border-b-4 border-r-4 rounded-br-lg',
                 ].map((cls, i) => (
-                  <div key={i} className={`absolute w-8 h-8 ${cls} border-blue-500`} />
+                  <div key={i} className={`absolute w-6 h-6 ${cls} border-blue-400`} />
                 ))}
-                {/* Scan line */}
+
+                {/* Animated scan line */}
                 <div
-                  className="absolute left-2 right-2 h-0.5 bg-blue-500 opacity-80"
-                  style={{ animation: 'scanLine 2s ease-in-out infinite', top: '50%' }}
+                  className="absolute left-1 right-1 h-0.5 bg-blue-400"
+                  style={{ animation: 'scanLine 1.5s ease-in-out infinite', top: '10%' }}
                 />
               </div>
-            </div>
 
-            {/* Hint */}
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-              <span className="text-xs px-3 py-1.5 rounded-full bg-black/60 text-white">
-                👆 Tap screen to focus
-              </span>
+              {/* Label below box */}
+              <div className="absolute text-white text-xs font-medium bg-black/40 px-3 py-1 rounded-full"
+                style={{ top: 'calc(50% + 82px)' }}>
+                Align QR code inside the box
+              </div>
             </div>
           </div>
 
           <p className="text-xs text-center text-gray-500">{hint}</p>
 
           <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 space-y-1">
-            <p>📏 Hold QR code <strong>15–20cm</strong> from camera</p>
-            <p>💡 Make sure QR code is well-lit and not scratched</p>
-            <p>🖼️ Blurry? Switch to <strong>Upload Photo</strong> tab</p>
+            <p>📏 Hold QR code <strong>10–15cm</strong> from camera</p>
+            <p>💡 Make sure QR code is well lit</p>
+            <p>🖼️ Not working? Switch to <strong>Upload Photo</strong></p>
           </div>
         </>
       )}
 
-      {/* Upload mode */}
       {mode === 'upload' && (
         <>
           <div
@@ -479,30 +418,18 @@ function ScanQRTab({ onSuccess }) {
           >
             <div className="text-4xl">🖼️</div>
             <div className="text-center px-4">
-              <p className="text-sm font-semibold text-gray-800">
-                Choose photo from gallery
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Take a photo of the QR code on your camera
-              </p>
+              <p className="text-sm font-semibold text-gray-800">Choose photo from gallery</p>
+              <p className="text-xs text-gray-500 mt-1">Take a photo of the QR code on your camera</p>
             </div>
-            <span className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl">
-              Choose Photo
-            </span>
+            <span className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl">Choose Photo</span>
           </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
         </>
       )}
 
       <style>{`
         @keyframes scanLine {
-          0%, 100% { top: 15%; }
+          0%, 100% { top: 10%; }
           50% { top: 85%; }
         }
       `}</style>
@@ -510,7 +437,7 @@ function ScanQRTab({ onSuccess }) {
   )
 }
 
-// ── Tab 2: RTSP Manual Entry ──────────────────────────────────────────────────
+// ── Tab 2: RTSP ───────────────────────────────────────────────────────────────
 function RTSPTab({ onSuccess }) {
   const [form, setForm] = useState({
     name: '', camera_brand: 'trueview', local_ip: '',
@@ -523,27 +450,16 @@ function RTSPTab({ onSuccess }) {
   const [showPass, setShowPass] = useState(false)
   const [error, setError]       = useState('')
 
-  const set = (f) => (e) => {
-    setForm(p => ({ ...p, [f]: e.target.value }))
-    setProbe(null)
-  }
+  const set = (f) => (e) => { setForm(p => ({ ...p, [f]: e.target.value })); setProbe(null) }
 
   const handleBrand = (brand) => {
     const tpl = BRANDS.find(b => b.brand === brand)
-    if (tpl) setForm(p => ({
-      ...p,
-      camera_brand: brand,
-      rtsp_port: tpl.port,
-      rtsp_path: tpl.path,
-      cam_username: tpl.user
-    }))
+    if (tpl) setForm(p => ({ ...p, camera_brand: brand, rtsp_port: tpl.port, rtsp_path: tpl.path, cam_username: tpl.user }))
     setProbe(null)
   }
 
   const handleTest = async () => {
-    if (!form.local_ip || !form.cam_password) {
-      setError('Enter IP and password first'); return
-    }
+    if (!form.local_ip || !form.cam_password) { setError('Enter IP and password first'); return }
     setTesting(true); setProbe(null); setError('')
     try {
       const res = await testCameraConnection({
@@ -560,9 +476,9 @@ function RTSPTab({ onSuccess }) {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError('Camera name is required'); return }
-    if (!form.local_ip)    { setError('IP address is required'); return }
-    if (!form.cam_password){ setError('Password is required'); return }
+    if (!form.name.trim())     { setError('Camera name is required'); return }
+    if (!form.local_ip)        { setError('IP address is required'); return }
+    if (!form.cam_password)    { setError('Password is required'); return }
     setSaving(true); setError('')
     try {
       const res = await addRTSPCamera({ ...form, rtsp_port: +form.rtsp_port })
@@ -576,29 +492,24 @@ function RTSPTab({ onSuccess }) {
 
   return (
     <div className="p-6 space-y-4">
-
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
         ⚠️ Camera must be reachable from cloud. If on home WiFi (192.168.x.x),
         use <strong>RTMP Push</strong> tab or enable port forwarding on your router.
       </div>
 
-      {/* Brand picker */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
         <div className="grid grid-cols-4 gap-2">
           {BRANDS.map(b => (
             <button key={b.brand} onClick={() => handleBrand(b.brand)}
               className={`text-xs px-2 py-2 rounded-lg border transition-colors
-                ${form.camera_brand === b.brand
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                  : 'border-gray-200 text-gray-600'}`}>
+                ${form.camera_brand === b.brand ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600'}`}>
               {b.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Fields */}
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">Camera Name *</label>
@@ -623,13 +534,10 @@ function RTSPTab({ onSuccess }) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
           <div className="relative">
-            <input
-              type={showPass ? 'text' : 'password'}
+            <input type={showPass ? 'text' : 'password'}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-12 outline-none focus:border-blue-500"
               value={form.cam_password} onChange={set('cam_password')}
-              placeholder="Camera password"
-              autoComplete="new-password"
-            />
+              placeholder="Camera password" autoComplete="new-password" />
             <button type="button" onClick={() => setShowPass(s => !s)}
               className="absolute right-3 top-2 text-xs text-gray-400 hover:text-gray-600">
               {showPass ? 'Hide' : 'Show'}
@@ -643,7 +551,6 @@ function RTSPTab({ onSuccess }) {
         </div>
       </div>
 
-      {/* Probe result */}
       {probe && (
         probe.ok ? (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3">
@@ -714,30 +621,17 @@ function RTMPTab({ onSuccess }) {
       <div className="p-6 space-y-4">
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
           <p className="font-bold text-green-800">✅ Camera slot created!</p>
-          <p className="text-green-700 text-sm mt-1">
-            Enter this URL in your camera's admin panel:
-          </p>
+          <p className="text-green-700 text-sm mt-1">Enter this URL in your camera's admin panel:</p>
         </div>
-
-        <CopyField label="RTMPS URL (Recommended)"
-          value={result.rtmps_push_url}
-          onCopy={() => copy(result.rtmps_push_url, 'rtmps')}
-          copied={copied === 'rtmps'} highlight />
-
-        <CopyField label="RTMP URL (Fallback)"
-          value={result.rtmp_push_url}
-          onCopy={() => copy(result.rtmp_push_url, 'rtmp')}
-          copied={copied === 'rtmp'} />
-
-        <CopyField label="Stream Key"
-          value={result.push_key}
-          onCopy={() => copy(result.push_key, 'key')}
-          copied={copied === 'key'} />
-
+        <CopyField label="RTMPS URL (Recommended)" value={result.rtmps_push_url}
+          onCopy={() => copy(result.rtmps_push_url, 'rtmps')} copied={copied === 'rtmps'} highlight />
+        <CopyField label="RTMP URL (Fallback)" value={result.rtmp_push_url}
+          onCopy={() => copy(result.rtmp_push_url, 'rtmp')} copied={copied === 'rtmp'} />
+        <CopyField label="Stream Key" value={result.push_key}
+          onCopy={() => copy(result.push_key, 'key')} copied={copied === 'key'} />
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
           ⏱️ After configuring your camera, wait up to 60 seconds for stream to appear.
         </div>
-
         <button onClick={() => onSuccess(result)}
           className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
           Done — View in Dashboard
@@ -750,9 +644,7 @@ function RTMPTab({ onSuccess }) {
     <div className="p-6 space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
         <p className="font-semibold text-blue-800">📡 Best for Hikvision & Dahua</p>
-        <p className="text-blue-700 text-sm mt-1">
-          No port forwarding needed. Camera pushes stream directly to NeuralWatch cloud.
-        </p>
+        <p className="text-blue-700 mt-1">No port forwarding needed. Camera pushes stream directly to NeuralWatch.</p>
       </div>
 
       <div>
@@ -769,12 +661,9 @@ function RTMPTab({ onSuccess }) {
         <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
         <div className="grid grid-cols-3 gap-2">
           {['hikvision', 'dahua', 'generic'].map(b => (
-            <button key={b}
-              onClick={() => setForm(p => ({ ...p, camera_brand: b }))}
-              className={`text-sm py-2 rounded-lg border transition-colors capitalize
-                ${form.camera_brand === b
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                  : 'border-gray-200 text-gray-600'}`}>
+            <button key={b} onClick={() => setForm(p => ({ ...p, camera_brand: b }))}
+              className={`text-sm py-2 rounded-lg border transition-colors
+                ${form.camera_brand === b ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 text-gray-600'}`}>
               {b === 'generic' ? 'Other' : b.charAt(0).toUpperCase() + b.slice(1)}
             </button>
           ))}
@@ -784,14 +673,12 @@ function RTMPTab({ onSuccess }) {
       <div className="flex gap-4">
         <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
           <input type="checkbox" checked={form.has_ptz}
-            onChange={e => setForm(p => ({ ...p, has_ptz: e.target.checked }))}
-            className="accent-blue-600" />
+            onChange={e => setForm(p => ({ ...p, has_ptz: e.target.checked }))} className="accent-blue-600" />
           Has PTZ
         </label>
         <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
           <input type="checkbox" checked={form.has_audio}
-            onChange={e => setForm(p => ({ ...p, has_audio: e.target.checked }))}
-            className="accent-blue-600" />
+            onChange={e => setForm(p => ({ ...p, has_audio: e.target.checked }))} className="accent-blue-600" />
           Has Audio
         </label>
       </div>
@@ -811,9 +698,7 @@ function SuccessScreen({ camera, onDone }) {
   return (
     <div className="p-8 text-center space-y-4">
       <div className="text-5xl">🎉</div>
-      <h3 className="text-xl font-bold text-gray-900">
-        {camera.name || 'Camera'} added!
-      </h3>
+      <h3 className="text-xl font-bold text-gray-900">{camera.name || 'Camera'} added!</h3>
       <p className="text-gray-500 text-sm">
         {camera.connection_method === 'rtsp_pull'
           ? 'NeuralWatch is connecting to your camera stream...'
@@ -830,19 +715,16 @@ function SuccessScreen({ camera, onDone }) {
   )
 }
 
-// ── Copy field helper ─────────────────────────────────────────────────────────
+// ── Copy field ────────────────────────────────────────────────────────────────
 function CopyField({ label, value, onCopy, copied, highlight }) {
   return (
-    <div className={`rounded-lg border p-3
-      ${highlight ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
+    <div className={`rounded-lg border p-3 ${highlight ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
       <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
       <div className="flex items-center gap-2">
         <code className="flex-1 text-xs font-mono text-gray-800 break-all">{value}</code>
         <button onClick={onCopy}
           className={`px-3 py-1 text-xs rounded-lg font-semibold flex-shrink-0 transition-colors
-            ${copied
-              ? 'bg-green-500 text-white'
-              : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100'}`}>
+            ${copied ? 'bg-green-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100'}`}>
           {copied ? '✓' : 'Copy'}
         </button>
       </div>
