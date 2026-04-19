@@ -202,14 +202,14 @@ function CameraCard({ camera, activeStreams, onDelete, onStreamChange }) {
     }
   }
 
-  const handleStreamToggle = async () => {
+ const handleStreamToggle = async () => {
     setStreamLoading(true)
     try {
       if (isStreaming) await stopStream(camera.id)
       else await startStream(camera.id)
       onStreamChange()
     } catch (e) {
-      alert(e.response?.data?.detail || 'Stream control failed')
+      console.error('Stream control:', e)
     } finally {
       setStreamLoading(false)
     }
